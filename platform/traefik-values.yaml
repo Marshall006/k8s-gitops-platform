@@ -1,0 +1,36 @@
+# Traefik : point d'entrée unique du cluster (successeur choisi après l'arrêt
+# d'ingress-nginx en mars 2026), configuré en mode Gateway API.
+providers:
+  kubernetesGateway:
+    enabled: true
+  kubernetesIngress:
+    enabled: false
+
+# La Gateway est déclarée dans platform/gateway/ (plus lisible, versionnée)
+gateway:
+  enabled: false
+gatewayClass:
+  enabled: true
+  name: traefik
+
+# kind : le port 30080 du nœud est relié au port 80 de ta machine
+service:
+  type: NodePort
+ports:
+  web:
+    nodePort: 30080
+  websecure:
+    expose:
+      default: false
+
+metrics:
+  prometheus:
+    serviceMonitor:
+      enabled: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi

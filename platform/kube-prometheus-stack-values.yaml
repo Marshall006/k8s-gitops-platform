@@ -1,0 +1,69 @@
+# Supervision : Prometheus (métriques), Alertmanager (alertes), Grafana
+# (tableaux de bord), kube-state-metrics et node-exporter.
+fullnameOverride: kps
+
+# kind n'expose pas ces composants internes : on évite des alertes fantômes
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+defaultRules:
+  rules:
+    etcd: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeControllerManager: false
+    kubeProxy: false
+
+prometheus:
+  prometheusSpec:
+    # Découvre TOUS les ServiceMonitor / PrometheusRule du cluster,
+    # pas seulement ceux créés par ce chart
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    retention: 2d
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1536Mi
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+
+grafana:
+  fullnameOverride: grafana
+  admin:
+    # Mot de passe aléatoire créé par bootstrap.sh (jamais dans Git)
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  grafana.ini:
+    server:
+      root_url: http://grafana.localhost
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      url: http://loki.monitoring.svc.cluster.local:3100
+      access: proxy
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
