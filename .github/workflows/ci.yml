@@ -62,7 +62,8 @@ jobs:
           render() {  # render <release> <repo/chart> <version> <values> <namespace>
             echo "::group::$2 ($3)"
             helm show chart "$2" --version "$3" | grep -E '^(name|version|appVersion):'
-            helm template "$1" "$2" --version "$3" -n "$5" -f "$4" > "rendered-$1.yaml"
+            helm template "$1" "$2" --version "$3" -n "$5" -f "$4" \
+              --api-versions monitoring.coreos.com/v1 > "rendered-$1.yaml"
             kubeconform -strict -summary -ignore-missing-schemas \
               -schema-location default -schema-location "$CRDS_CATALOG" "rendered-$1.yaml"
             echo "::endgroup::"
