@@ -1,0 +1,23 @@
+# Projet 2 : https://github.com/Marshall006/rag-agent-assistant
+image:
+  repository: ghcr.io/marshall006/odoo-rag-assistant
+  tag: sha-0b18f342115d1465ab0687c1ac8f20bdc00addc5
+
+replicaCount: 1
+
+# Le modèle d'embeddings et l'index sont chargés en mémoire au démarrage
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    memory: 1536Mi
+
+env:
+  LLM_PROVIDER: ollama
+  LLM_BASE_URL: http://ollama.ai.svc.cluster.local:11434/v1
+  LLM_MODEL: qwen2.5:3b
+
+route:
+  enabled: true
+  hostnames: ["rag.localhost"]
