@@ -34,16 +34,6 @@ spec:
         releaseName: traefik
         valueFiles:
           - $values/platform/traefik-values.yaml
-        # Le chart vérifie que l'API ServiceMonitor existe avant de la générer
-        apiVersions:
-          - monitoring.coreos.com/v1/ServiceMonitor
-        {{- if not .Values.platform.monitoring }}
-        valuesObject:
-          metrics:
-            prometheus:
-              serviceMonitor:
-                enabled: false
-        {{- end }}
     {{- include "root.valuesSource" . | nindent 4 }}
   destination:
     server: https://kubernetes.default.svc

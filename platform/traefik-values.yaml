@@ -23,10 +23,13 @@ ports:
     expose:
       default: false
 
+# ServiceMonitor du chart désactivé : le chart refuse de le générer tant que
+# Prometheus n'est pas installé (problème de l'œuf et de la poule au premier
+# déploiement). Les métriques Traefik restent exposées sur le port 9100.
 metrics:
   prometheus:
     serviceMonitor:
-      enabled: true
+      enabled: false
 
 resources:
   requests:
