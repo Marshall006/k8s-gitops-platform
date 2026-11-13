@@ -15,7 +15,11 @@ gatewayClass:
 
 # kind : le port 30080 du nœud est relié au port 80 de ta machine
 service:
-  type: NodePort  # un LoadBalancer resterait « en attente » pour toujours sur kind
+  spec:
+    # Chart Traefik >= 41 : le type se règle dans service.spec (et non plus
+    # service.type). Sur kind, un LoadBalancer resterait « en attente » pour
+    # toujours et Argo CD le considérerait comme jamais prêt.
+    type: NodePort
 ports:
   web:
     nodePort: 30080
