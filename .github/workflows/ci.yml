@@ -1,0 +1,121 @@
+# =============================================================================
+# CI de la plateforme
+#   1. validate : lint Helm + rendu de TOUS les manifestes + validation de
+#                 schéma (kubeconform), y compris les charts tiers avec nos valeurs
+#   2. images   : les images des projets 1 et 2 sont-elles téléchargeables ?
+#   3. e2e      : cluster Kubernetes éphémère (kind) -> bootstrap complet par
+#                 Argo CD depuis CE commit -> tests de fumée de bout en bout
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  KUBECONFORM_VERSION: v0.7.0
+  CRDS_CATALOG: https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json
+
+jobs:
+  validate:
+    name: Lint & validation des manifestes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v4
+      - name: Installer kubeconform
+        run: |
+          curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" | tar xz
+          sudo mv kubeconform /usr/local/bin/
+      - name: Lint des charts
+        run: |
+          helm lint charts/ml-service --values apps/credit-risk-api/values.yaml --strict
+          helm lint charts/ml-service --values apps/odoo-rag/values.yaml --strict
+          helm lint gitops/root --values gitops/root/values-ci.yaml --strict
+          helm lint gitops/root --values gitops/root/values-local.yaml --strict
+      - name: Rendu et validation des applications et de la racine
+        run: |
+          mkdir -p rendered
+          helm template credit-risk-api charts/ml-service -n apps -f apps/credit-risk-api/values.yaml > rendered/credit-risk-api.yaml
+          helm template odoo-rag charts/ml-service -n apps -f apps/odoo-rag/values.yaml > rendered/odoo-rag.yaml
+          helm template root gitops/root -f gitops/root/values-ci.yaml > rendered/root-ci.yaml
+          helm template root gitops/root -f gitops/root/values-local.yaml > rendered/root-local.yaml
+          cp platform/gateway/*.yaml apps/ollama/*.yaml rendered/
+          kubeconform -strict -summary -output pretty \
+            -schema-location default -schema-location "$CRDS_CATALOG" rendered/
+      - name: Résolution des versions et rendu des charts tiers avec nos valeurs
+        run: |
+          helm repo add traefik https://traefik.github.io/charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+          v() { yq ".charts.$1" gitops/root/values.yaml; }
+          render() {  # render <release> <repo/chart> <version> <values> <namespace>
+            echo "::group::$2 ($3)"
+            helm show chart "$2" --version "$3" | grep -E '^(name|version|appVersion):'
+            helm template "$1" "$2" --version "$3" -n "$5" -f "$4" > "rendered-$1.yaml"
+            kubeconform -strict -summary -ignore-missing-schemas \
+              -schema-location default -schema-location "$CRDS_CATALOG" "rendered-$1.yaml"
+            echo "::endgroup::"
+          }
+          render traefik traefik/traefik "$(v traefik)" platform/traefik-values.yaml traefik
+          render kube-prometheus-stack prometheus-community/kube-prometheus-stack "$(v kubePrometheusStack)" platform/kube-prometheus-stack-values.yaml monitoring
+          render loki grafana/loki "$(v loki)" platform/loki-values.yaml monitoring
+          render alloy grafana/alloy "$(v alloy)" platform/alloy-values.yaml monitoring
+
+  images:
+    name: Images des applications accessibles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Vérifier que les images sont publiques et existent
+        run: |
+          fail=0
+          for app in credit-risk-api odoo-rag; do
+            image="$(yq '.image.repository + ":" + .image.tag' apps/$app/values.yaml)"
+            if docker manifest inspect "$image" >/dev/null 2>&1; then
+              echo "✔ $image"
+            else
+              pkg="$(basename "$(yq '.image.repository' apps/$app/values.yaml)")"
+              echo "::error::$image introuvable ou privée. Rendre le package public : https://github.com/users/Marshall006/packages/container/$pkg/settings (Danger Zone > Change visibility > Public)"
+              fail=1
+            fi
+          done
+          exit $fail
+
+  e2e:
+    name: Bout en bout sur cluster kind
+    needs: [validate, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v4
+      - name: Créer le cluster kind
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: ai-platform
+          config: bootstrap/kind-config.yaml
+          wait: 120s
+      - name: Bootstrap (Argo CD déploie ce commit précis)
+        run: ./bootstrap/bootstrap.sh ci "${{ github.sha }}"
+      - name: Attendre que toutes les applications soient saines
+        run: TIMEOUT=1500 ./bootstrap/wait-for-apps.sh
+      - name: Tests de fumée (Gateway, API, métriques, alertes, logs)
+        run: ./bootstrap/smoke-test.sh
+      - name: État final du cluster
+        if: always()
+        run: |
+          kubectl get applications -n argocd || true
+          kubectl get pods -A -o wide || true
+          kubectl get gateway,httproute -A || true
+          kubectl top nodes 2>/dev/null || true
