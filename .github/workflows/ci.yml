@@ -57,6 +57,7 @@ jobs:
           helm repo add traefik https://traefik.github.io/charts
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
           helm repo update
           v() { yq ".charts.$1" gitops/root/values.yaml; }
           render() {  # render <release> <repo/chart> <version> <values> <namespace>
@@ -72,6 +73,7 @@ jobs:
           render kube-prometheus-stack prometheus-community/kube-prometheus-stack "$(v kubePrometheusStack)" platform/kube-prometheus-stack-values.yaml monitoring
           render loki grafana/loki "$(v loki)" platform/loki-values.yaml monitoring
           render alloy grafana/alloy "$(v alloy)" platform/alloy-values.yaml monitoring
+          render metrics-server metrics-server/metrics-server "$(v metricsServer)" platform/metrics-server-values.yaml kube-system
 
   images:
     name: Images des applications accessibles

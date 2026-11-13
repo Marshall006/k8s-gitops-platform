@@ -5,6 +5,7 @@ targetRevision: main
 # Versions des charts tiers (contraintes semver résolues par Argo CD)
 charts:
   traefik: "41.*"
+  metricsServer: "3.*"
   kubePrometheusStack: "87.*"
   loki: "6.*"
   alloy: "1.*"

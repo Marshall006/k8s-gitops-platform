@@ -109,6 +109,7 @@ flowchart TB
 | **Logs** | **Loki** + **Grafana Alloy** | Collecte et stockage des logs de tous les pods | Alloy remplace Promtail (déprécié) ; Loki s'interroge depuis Grafana |
 | **LLM** | **Ollama** | Modèle `qwen2.5:3b` servi dans le cluster | IA locale, aucune donnée ne sort |
 | **Sécurité** | securityContext, NetworkPolicy | Non-root, seccomp, capabilities supprimées, réseau en zéro confiance | Bonnes pratiques Pod Security « restricted » |
+| **Autoscaling** | **metrics-server** | Expose le CPU/mémoire des pods aux HPA | Absent de kind : sans lui, l'autoscaling est aveugle |
 | **Résilience** | HPA, PDB, RollingUpdate, probes | Autoscaling 2→5 pods, zéro interruption pendant les mises à jour | Prêt pour la production |
 | **CI** | **GitHub Actions** + kind | Lint, rendu, validation de schéma, cluster éphémère, tests de bout en bout | Chaque commit est déployé et testé pour de vrai |
 | **Validation** | **kubeconform** + CRDs catalog | Vérifie chaque manifeste contre le schéma Kubernetes | Détecte les erreurs avant le cluster |
@@ -120,7 +121,7 @@ saine.
 
 ```mermaid
 flowchart LR
-    W3["Vague -3<br/>CRDs Gateway API<br/>kube-prometheus-stack"] --> W2["Vague -2<br/>Traefik"]
+    W3["Vague -3<br/>CRDs Gateway API<br/>kube-prometheus-stack"] --> W2["Vague -2<br/>Traefik · metrics-server"]
     W2 --> W1["Vague -1<br/>Gateway + routes<br/>Loki · Alloy"]
     W1 --> W0["Vague 0<br/>Ollama"]
     W0 --> WA["Vague 1<br/>credit-risk-api<br/>odoo-rag"]
@@ -220,7 +221,7 @@ Les images sont référencées par un **tag immuable** (`sha-<commit>`), jamais 
 |---|---|
 | **validate** | `helm lint --strict`, rendu de tous les manifestes, validation de schéma (kubeconform), résolution des versions des charts tiers et rendu avec **nos** valeurs |
 | **images** | Les images des projets 1 et 2 existent et sont publiques |
-| **e2e** | Crée un cluster kind, exécute `bootstrap.sh` sur **le commit testé**, attend que les 9 applications Argo CD soient *Synced* et *Healthy*, puis lance les tests de fumée |
+| **e2e** | Crée un cluster kind, exécute `bootstrap.sh` sur **le commit testé**, attend que les 10 applications Argo CD soient *Synced* et *Healthy*, puis lance les tests de fumée |
 
 Les tests de fumée vérifient le parcours complet : requête via la Gateway →
 réponse de l'API → **métriques présentes dans Prometheus** → **alertes

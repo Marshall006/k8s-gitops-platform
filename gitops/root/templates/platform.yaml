@@ -16,6 +16,30 @@ spec:
     server: https://kubernetes.default.svc
   {{- include "root.syncPolicy" . | nindent 2 }}
 ---
+# --- Vague -2 : metrics-server (CPU/mémoire des pods, requis par l'autoscaling)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  project: platform
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/metrics-server/
+      chart: metrics-server
+      targetRevision: {{ .Values.charts.metricsServer | quote }}
+      helm:
+        releaseName: metrics-server
+        valueFiles:
+          - $values/platform/metrics-server-values.yaml
+    {{- include "root.valuesSource" . | nindent 4 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  {{- include "root.syncPolicy" . | nindent 2 }}
+---
 # --- Vague -2 : Traefik (contrôleur de la Gateway)
 apiVersion: argoproj.io/v1alpha1
 kind: Application

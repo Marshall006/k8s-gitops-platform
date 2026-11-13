@@ -1,0 +1,6 @@
+# metrics-server : fournit l'API metrics.k8s.io (CPU / mémoire des pods),
+# indispensable aux HorizontalPodAutoscaler et à `kubectl top`.
+# Les clusters gérés (EKS, GKE, AKS) l'installent d'office ; kind non.
+args:
+  # kind : les certificats des kubelets sont auto-signés
+  - --kubelet-insecure-tls
