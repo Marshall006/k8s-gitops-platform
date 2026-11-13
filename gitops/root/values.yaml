@@ -8,7 +8,7 @@ charts:
   kubePrometheusStack: "87.*"
   loki: "6.*"
   alloy: "1.*"
-  gatewayApi: v1.4.0  # tag Git des CRDs Gateway API
+  gatewayApi: v1.5.1  # tag Git des CRDs Gateway API (version attendue par Traefik 3.7)
 
 platform:
   monitoring: true

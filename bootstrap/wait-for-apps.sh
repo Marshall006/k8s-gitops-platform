@@ -27,10 +27,15 @@ while true; do
     for app in $(echo "$status" | tail -n +2 | awk '!($2=="Synced" && $3=="Healthy") {print $1}'); do
       echo "----- $app -----"
       kubectl -n argocd get application "$app" -o jsonpath='{.status.conditions}{"\n"}{.status.operationState.message}{"\n"}' || true
-      kubectl -n argocd get application "$app" \
-        -o jsonpath='{range .status.resources[?(@.health.status!="Healthy")]}{.kind}/{.namespace}/{.name}: {.health.status} {.health.message}{"\n"}{end}' || true
+      kubectl -n argocd get application "$app" -o json \
+        | jq -r '.status.resources[]? | select((.health.status // "Healthy") != "Healthy" or .status != "Synced")
+                 | "\(.kind)/\(.namespace // "-")/\(.name): sync=\(.status) santé=\(.health.status // "-") \(.health.message // "")"' || true
     done
     kubectl get pods -A | grep -vE "Running|Completed" || true
+    kubectl get gatewayclass,gateway,httproute -A -o wide || true
+    kubectl get gatewayclass traefik -o jsonpath='{.status.conditions}' || true; echo
+    kubectl -n traefik get svc -o wide || true
+    kubectl -n traefik logs deploy/traefik --tail=30 || true
     kubectl get events -A --sort-by=.lastTimestamp | tail -40 || true
     exit 1
   fi

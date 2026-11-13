@@ -15,7 +15,7 @@ gatewayClass:
 
 # kind : le port 30080 du nœud est relié au port 80 de ta machine
 service:
-  type: NodePort
+  type: NodePort  # un LoadBalancer resterait « en attente » pour toujours sur kind
 ports:
   web:
     nodePort: 30080
