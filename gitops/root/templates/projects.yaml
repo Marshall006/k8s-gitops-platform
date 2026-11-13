@@ -1,0 +1,38 @@
+# AppProjects : séparent les droits de la plateforme et des applications
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  description: Socle technique (réseau, supervision, logs)
+  sourceRepos: ["*"]
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  description: Applications métier (IA)
+  sourceRepos:
+    - {{ .Values.repoURL }}
+  # Les équipes applicatives ne déploient que dans leurs namespaces
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: apps
+    - server: https://kubernetes.default.svc
+      namespace: ai
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace

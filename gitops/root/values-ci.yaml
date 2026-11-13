@@ -1,0 +1,8 @@
+# Profil CI : cluster éphémère sur GitHub Actions.
+# Pas d'Ollama (plusieurs Go) : l'assistant utilise le LLM factice.
+apps:
+  rag:
+    env:
+      LLM_PROVIDER: fake
+  ollama:
+    enabled: false

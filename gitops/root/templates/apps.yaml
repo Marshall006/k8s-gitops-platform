@@ -1,0 +1,80 @@
+{{- if .Values.apps.ollama.enabled }}
+# --- Vague 0 : serveur de LLM local
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ollama
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: apps
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision }}
+    path: apps/ollama
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai
+  {{- include "root.syncPolicy" . | nindent 2 }}
+---
+{{- end }}
+{{- if .Values.apps.creditRisk.enabled }}
+# --- Vague 1 : projet 1, API de scoring de crédit
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: credit-risk-api
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: apps
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision }}
+    path: charts/ml-service
+    helm:
+      releaseName: credit-risk-api
+      valueFiles:
+        - ../../apps/credit-risk-api/values.yaml
+      {{- if not .Values.platform.monitoring }}
+      valuesObject:
+        serviceMonitor: {enabled: false}
+        prometheusRule: {enabled: false}
+      {{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apps
+  {{- include "root.syncPolicy" . | nindent 2 }}
+---
+{{- end }}
+{{- if .Values.apps.rag.enabled }}
+# --- Vague 1 : projet 2, assistant RAG Odoo
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: odoo-rag
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: apps
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision }}
+    path: charts/ml-service
+    helm:
+      releaseName: odoo-rag
+      valueFiles:
+        - ../../apps/odoo-rag/values.yaml
+      {{- with .Values.apps.rag.env }}
+      valuesObject:
+        env:
+          {{- toYaml . | nindent 10 }}
+      {{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apps
+  {{- include "root.syncPolicy" . | nindent 2 }}
+{{- end }}

@@ -1,0 +1,4 @@
+# Profil local (16 Go de RAM recommandés) : tout est activé, LLM via Ollama.
+apps:
+  ollama:
+    enabled: true

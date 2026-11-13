@@ -1,0 +1,7 @@
+apiVersion: v2
+name: root
+description: >-
+  Application racine (pattern « App of Apps ») : déclare, dans l'ordre, toutes
+  les applications Argo CD de la plateforme.
+type: application
+version: 0.1.0

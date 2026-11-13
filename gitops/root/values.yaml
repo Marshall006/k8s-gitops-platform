@@ -1,0 +1,25 @@
+# Dépôt Git surveillé par Argo CD (la « source de vérité »)
+repoURL: https://github.com/Marshall006/k8s-gitops-platform.git
+targetRevision: main
+
+# Versions des charts tiers (contraintes semver résolues par Argo CD)
+charts:
+  traefik: "41.*"
+  kubePrometheusStack: "87.*"
+  loki: "6.*"
+  alloy: "1.*"
+  gatewayApi: v1.4.0  # tag Git des CRDs Gateway API
+
+platform:
+  monitoring: true
+  logging: true
+
+apps:
+  creditRisk:
+    enabled: true
+  rag:
+    enabled: true
+    # Surcharges ajoutées aux valeurs de apps/odoo-rag/values.yaml
+    env: {}
+  ollama:
+    enabled: true
