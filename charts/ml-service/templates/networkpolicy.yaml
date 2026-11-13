@@ -1,0 +1,26 @@
+{{- if .Values.networkPolicy.enabled }}
+# NetworkPolicy : par défaut, plus personne ne peut joindre le pod, sauf les
+# namespaces autorisés (la passerelle d'entrée et la supervision).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ml-service.name" . }}
+  labels:
+    {{- include "ml-service.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ml-service.selectorLabels" . | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector: {}  # pods du même namespace
+        {{- range .Values.networkPolicy.allowFromNamespaces }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . }}
+        {{- end }}
+      ports:
+        - port: http
+          protocol: TCP
+{{- end }}

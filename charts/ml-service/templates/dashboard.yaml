@@ -1,0 +1,14 @@
+{{- if .Values.dashboard.enabled }}
+# Tableau de bord Grafana : le « sidecar » de Grafana détecte automatiquement
+# les ConfigMaps portant l'étiquette grafana_dashboard et les importe.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ml-service.name" . }}-dashboard
+  labels:
+    {{- include "ml-service.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  {{ .Values.dashboard.file }}: |-
+    {{- .Files.Get (printf "dashboards/%s" .Values.dashboard.file) | nindent 4 }}
+{{- end }}

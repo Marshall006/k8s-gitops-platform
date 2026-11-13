@@ -1,0 +1,17 @@
+{{- if .Values.serviceMonitor.enabled }}
+# ServiceMonitor : dit à Prometheus « viens lire /metrics sur ce Service »
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "ml-service.name" . }}
+  labels:
+    {{- include "ml-service.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ml-service.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: {{ .Values.serviceMonitor.path }}
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

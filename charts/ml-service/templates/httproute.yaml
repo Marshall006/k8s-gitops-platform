@@ -1,0 +1,23 @@
+{{- if .Values.route.enabled }}
+# HTTPRoute (Gateway API) : « tout le trafic pour ce nom d'hôte va vers ce Service »
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "ml-service.name" . }}
+  labels:
+    {{- include "ml-service.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.route.gateway.name }}
+      namespace: {{ .Values.route.gateway.namespace }}
+  hostnames:
+    {{- toYaml .Values.route.hostnames | nindent 4 }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "ml-service.name" . }}
+          port: {{ .Values.service.port }}
+{{- end }}

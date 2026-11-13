@@ -1,0 +1,94 @@
+# =============================================================================
+# Valeurs par défaut du chart ml-service.
+# Chaque application les surcharge dans apps/<application>/values.yaml.
+# =============================================================================
+
+nameOverride: ""
+
+image:
+  repository: ghcr.io/example/app
+  # Tag IMMUABLE (sha-<commit>) : en GitOps, « latest » est proscrit, car on ne
+  # saurait plus quelle version tourne réellement.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+containerPort: 8000
+
+# Variables d'environnement passées au conteneur (clé: valeur)
+env: {}
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+probes:
+  path: /health
+  # startupProbe : laisse le temps au modèle de se charger au démarrage
+  startup:
+    periodSeconds: 5
+    failureThreshold: 36  # 3 minutes maximum
+  readiness:
+    periodSeconds: 10
+  liveness:
+    periodSeconds: 20
+
+service:
+  port: 80
+
+# Exposition HTTP via la Gateway API (successeur officiel d'Ingress)
+route:
+  enabled: false
+  hostnames: []
+  gateway:
+    name: main
+    namespace: gateway
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Zéro confiance : seul le trafic venant de ces namespaces est autorisé
+networkPolicy:
+  enabled: true
+  allowFromNamespaces:
+    - traefik
+    - monitoring
+
+serviceMonitor:
+  enabled: false
+  path: /metrics
+  interval: 30s
+
+prometheusRule:
+  enabled: false
+  # Seuils des alertes
+  errorRateThreshold: 0.05     # 5 % de réponses 5xx
+  latencyP95Seconds: 0.5       # 500 ms au 95e percentile
+
+dashboard:
+  enabled: false
+  # Fichier JSON dans charts/ml-service/dashboards/
+  file: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]

@@ -1,0 +1,49 @@
+{{- if .Values.prometheusRule.enabled }}
+{{- $name := include "ml-service.name" . }}
+{{- $sel := printf "namespace=%q, service=%q" .Release.Namespace $name }}
+# Alertes : les « détecteurs de fumée » du service
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ml-service.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: {{ $name }}.rules
+      rules:
+        - alert: {{ $name | camelcase | replace "-" "" }}Down
+          expr: up{ {{ $sel }} } == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $name }} ne répond plus à Prometheus"
+            description: "Aucune métrique collectée depuis 2 minutes."
+        - alert: {{ $name | camelcase | replace "-" "" }}HighErrorRate
+          expr: |
+            sum(rate(http_requests_total{ {{ $sel }}, status="5xx"}[5m]))
+              / clamp_min(sum(rate(http_requests_total{ {{ $sel }} }[5m])), 1e-9)
+              > {{ .Values.prometheusRule.errorRateThreshold }}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Plus de {{ mulf .Values.prometheusRule.errorRateThreshold 100 }} % d'erreurs 5xx sur {{ $name }}"
+        - alert: {{ $name | camelcase | replace "-" "" }}HighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_request_duration_seconds_bucket{ {{ $sel }} }[5m]))
+            ) > {{ .Values.prometheusRule.latencyP95Seconds }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Latence p95 de {{ $name }} au-dessus de {{ .Values.prometheusRule.latencyP95Seconds }} s"
+        - alert: {{ $name | camelcase | replace "-" "" }}Restarting
+          expr: increase(kube_pod_container_status_restarts_total{namespace={{ .Release.Namespace | quote }}, pod=~"{{ $name }}-.*"}[15m]) > 3
+          labels:
+            severity: warning
+          annotations:
+            summary: "Les pods de {{ $name }} redémarrent en boucle"
+{{- end }}

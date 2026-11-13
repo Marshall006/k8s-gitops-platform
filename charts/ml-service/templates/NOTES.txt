@@ -1,0 +1,4 @@
+{{ include "ml-service.name" . }} déployé dans le namespace {{ .Release.Namespace }}.
+{{- if .Values.route.enabled }}
+URL : {{ range .Values.route.hostnames }}http://{{ . }} {{ end }}
+{{- end }}
